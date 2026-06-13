@@ -117,16 +117,32 @@ class Recipe {
   }
 
   factory Recipe.fromJson(Map<String, dynamic> json) {
+    // Parse steps from steps_tr (Supabase) or steps (local)
+    List<RecipeStep> parsedSteps = [];
+    final stepsData = json['steps_tr'] ?? json['steps'];
+    if (stepsData is List) {
+      parsedSteps = stepsData.map((e) {
+        if (e is Map<String, dynamic>) {
+          return RecipeStep.fromJson(e);
+        }
+        return RecipeStep(order: 0, instructionTr: e.toString(), instructionEn: '');
+      }).toList();
+    }
+
+    // Parse tags from tags (Supabase) or keywords (local)
+    List<String>? parsedTags;
+    final tagsData = json['tags'] ?? json['keywords'];
+    if (tagsData is List) {
+      parsedTags = tagsData.cast<String>();
+    }
+
     return Recipe(
       id: json['id'] as String,
       name: json['name'] as String? ?? json['title_tr'] as String? ?? 'Tarif',
       shortDescription: json['short_description'] as String? ?? json['description_tr'] as String? ?? '',
       ingredientNames: List<String>.from(json['ingredient_names'] ?? json['ingredient_keys'] ?? []),
       ingredientsRaw: List<String>.from(json['ingredients_raw'] ?? []),
-      steps: (json['steps'] as List<dynamic>?)
-              ?.map((e) => RecipeStep.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          [],
+      steps: parsedSteps,
       imageUrl: json['image_url'] as String?,
       prepTime: json['prep_time'] as int?,
       cookTime: json['cook_time'] as int?,
@@ -135,7 +151,7 @@ class Recipe {
       category: json['category'] as String?,
       categoryBread: json['category_bread'] as String?,
       cuisine: json['cuisine'] as String?,
-      keywords: (json['keywords'] as List<dynamic>?)?.cast<String>(),
+      keywords: parsedTags,
     );
   }
 
@@ -186,7 +202,7 @@ class RecipeStep {
   factory RecipeStep.fromJson(Map<String, dynamic> json) {
     return RecipeStep(
       order: json['order'] as int? ?? 0,
-      instructionTr: json['instruction_tr'] as String? ?? json['instruction_en'] as String? ?? '',
+      instructionTr: json['instruction_tr'] as String? ?? json['instruction'] as String? ?? '',
       instructionEn: json['instruction_en'] as String? ?? '',
       imageUrl: json['image_url'] as String?,
       duration: json['duration'] as int?,

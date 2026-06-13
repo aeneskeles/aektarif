@@ -207,6 +207,42 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  Future<bool> signInWithGoogle() async {
+    if (!SupabaseConfig.isConfigured) {
+      state = state.copyWith(
+        status: AuthStatus.error,
+        errorMessage: 'Supabase yapılandırılmamış',
+      );
+      return false;
+    }
+
+    state = state.copyWith(status: AuthStatus.loading);
+
+    try {
+      final response = await _repository.signInWithGoogle();
+
+      if (response.user != null) {
+        state = AuthState(
+          status: AuthStatus.authenticated,
+          user: response.user,
+        );
+        return true;
+      } else {
+        state = state.copyWith(
+          status: AuthStatus.error,
+          errorMessage: 'Google ile giriş başarısız oldu',
+        );
+        return false;
+      }
+    } catch (e) {
+      state = state.copyWith(
+        status: AuthStatus.error,
+        errorMessage: _translateError(e.toString()),
+      );
+      return false;
+    }
+  }
+
   Future<void> signOut() async {
     if (SupabaseConfig.isConfigured) {
       await _repository.signOut();

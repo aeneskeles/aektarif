@@ -4,3 +4,4 @@ export 'feed_repository.dart';
 export 'ingredients_repository.dart';
 export 'recipes_repository.dart';
 export 'detection_service.dart';
+export 'chef_assistant_service.dart';

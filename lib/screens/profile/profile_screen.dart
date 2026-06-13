@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../config/supabase_config.dart';
 import '../../theme/app_theme.dart';
+import '../../theme/theme_extensions.dart';
 import '../../providers/auth_provider.dart';
 import '../../data/feed_repository.dart';
 import '../../data/auth_repository.dart';
@@ -11,6 +12,7 @@ import '../../models/user_profile.dart';
 import '../post/create_post_screen.dart';
 import 'edit_profile_screen.dart';
 import '../settings/notification_settings_screen.dart';
+import '../settings/settings_screen.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -26,8 +28,13 @@ class ProfileScreen extends ConsumerWidget {
     final user = authState.user;
     if (user == null) {
       return Scaffold(
-        backgroundColor: AppTheme.backgroundColor,
-        body: const Center(child: Text('Giriş yapmanız gerekiyor')),
+        backgroundColor: context.appBackground,
+        body: Center(
+          child: Text(
+            'Giriş yapmanız gerekiyor',
+            style: TextStyle(color: context.appTextPrimary),
+          ),
+        ),
       );
     }
 
@@ -35,86 +42,47 @@ class ProfileScreen extends ConsumerWidget {
     final userPostsAsync = ref.watch(userPostsProvider(user.id));
 
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
+      backgroundColor: context.appBackground,
       body: CustomScrollView(
         slivers: [
+          // Header
           SliverToBoxAdapter(
             child: SafeArea(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                child: Column(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Tarif Defterim',
-                          style: Theme.of(context).textTheme.titleLarge
-                              ?.copyWith(fontWeight: FontWeight.w700),
-                        ),
-                        IconButton(
-                          onPressed: () {
-                            _showSettingsSheet(context, ref);
-                          },
-                          icon: const Icon(Icons.settings_outlined),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 22),
-
-                    profileAsync.when(
-                      data: (profile) => _ProfileHeader(
-                        name:
-                            profile?.displayName ??
-                            profile?.username ??
-                            'Kullanıcı',
-                        subtitle: profile?.username ?? 'Lezzet sever',
-                        avatarUrl: profile?.avatarUrl,
-                      ),
-                      loading: () => const _ProfileHeader(
-                        name: 'Yükleniyor...',
-                        subtitle: 'Lezzet sever',
-                      ),
-                      error: (error, stackTrace) => _ProfileHeader(
-                        name: user.email ?? 'Kullanıcı',
-                        subtitle: 'Lezzet sever',
+                    Text(
+                      'Profilim',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: context.appTextPrimary,
                       ),
                     ),
-
-                    const SizedBox(height: 22),
-
-                    _ProfileStatsSection(
-                      profileAsync: profileAsync,
-                      userPostsAsync: userPostsAsync,
-                    ),
-
-                    const SizedBox(height: 22),
-
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const CreatePostScreen(),
-                            ),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.primaryColor,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const SettingsScreen(),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: context.appCardFill,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: AppTheme.primaryColor.withValues(alpha: 0.15),
                           ),
                         ),
-                        child: const Text(
-                          'Tarif Yükle',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                          ),
+                        child: Icon(
+                          Icons.settings_outlined,
+                          size: 20,
+                          color: context.appIconColor,
                         ),
                       ),
                     ),
@@ -123,15 +91,109 @@ class ProfileScreen extends ConsumerWidget {
               ),
             ),
           ),
+
+          // Profile Card
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 18, 16, 12),
-              child: Row(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: context.appCardFill,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    // Avatar and Info Row
+                    profileAsync.when(
+                      data: (profile) => _ProfileHeader(
+                        name: profile?.displayName ?? profile?.username ?? 'Kullanıcı',
+                        handle: '@${profile?.username ?? 'kullanici'}',
+                        bio: profile?.bio ?? 'Lezzet tutkunusu 👨‍🍳',
+                        avatarUrl: profile?.avatarUrl,
+                      ),
+                      loading: () => const _ProfileHeader(
+                        name: 'Yükleniyor...',
+                        handle: '@kullanici',
+                        bio: '',
+                      ),
+                      error: (error, stackTrace) => _ProfileHeader(
+                        name: user.email?.split('@').first ?? 'Kullanıcı',
+                        handle: '@kullanici',
+                        bio: '',
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // Stats
+                    _ProfileStatsSection(
+                      profileAsync: profileAsync,
+                      userPostsAsync: userPostsAsync,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // Badges Section
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Paylaşımlarım',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
+                    'ROZETLER',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: context.appSectionLabel,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    height: 90,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      children: [
+                        _BadgeItemNew(
+                          icon: Icons.star_rounded,
+                          label: 'Şef',
+                          backgroundColor: context.appCardFill,
+                          iconBackgroundColor: const Color(0xFFF59E0B).withValues(alpha: 0.2),
+                          iconColor: const Color(0xFFF59E0B),
+                        ),
+                        const SizedBox(width: 12),
+                        _BadgeItemNew(
+                          icon: Icons.emoji_events_rounded,
+                          label: 'En İyi',
+                          backgroundColor: context.appCardFill,
+                          iconBackgroundColor: const Color(0xFFEAB308).withValues(alpha: 0.2),
+                          iconColor: const Color(0xFFEAB308),
+                        ),
+                        const SizedBox(width: 12),
+                        _BadgeItemNew(
+                          icon: Icons.local_fire_department_rounded,
+                          label: 'Trend',
+                          backgroundColor: context.appCardFill,
+                          iconBackgroundColor: const Color(0xFFEA580C).withValues(alpha: 0.2),
+                          iconColor: const Color(0xFFFB923C),
+                        ),
+                        const SizedBox(width: 12),
+                        _BadgeItemNew(
+                          icon: Icons.diamond_rounded,
+                          label: 'Premium',
+                          backgroundColor: context.appCardFill,
+                          iconBackgroundColor: context.appOverlayStrong,
+                          iconColor: context.appIconColor,
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -139,8 +201,38 @@ class ProfileScreen extends ConsumerWidget {
             ),
           ),
 
+          // Posts Section Header
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
+              child: Text(
+                'PAYLAŞIMLARIM',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: context.appSectionLabel,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+          ),
+
           _UserPostsList(userId: user.id),
         ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const CreatePostScreen()),
+          );
+        },
+        backgroundColor: AppTheme.primaryColor,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.add, size: 20),
+        label: const Text(
+          'Tarif Yükle',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
       ),
     );
   }
@@ -148,26 +240,27 @@ class ProfileScreen extends ConsumerWidget {
   void _showSettingsSheet(BuildContext context, WidgetRef ref) {
     showModalBottomSheet(
       context: context,
+      backgroundColor: context.appSurface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             Container(
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.grey.shade300,
+                color: AppTheme.textTertiary.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
-            const SizedBox(height: 20),
-            ListTile(
-              leading: const Icon(Icons.person_outline),
-              title: const Text('Profili Düzenle'),
+            const SizedBox(height: 24),
+            _SettingsItem(
+              icon: Icons.person_outline_rounded,
+              title: 'Profili Düzenle',
               onTap: () {
                 Navigator.pop(context);
                 Navigator.of(context).push(
@@ -175,9 +268,31 @@ class ProfileScreen extends ConsumerWidget {
                 );
               },
             ),
-            ListTile(
-              leading: const Icon(Icons.notifications_outlined),
-              title: const Text('Bildirim Ayarları'),
+            _SettingsItem(
+              icon: Icons.workspace_premium_outlined,
+              title: 'Premiuma Geç',
+              trailing: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppTheme.amberStar.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  'PRO',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.amberStar,
+                  ),
+                ),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+              },
+            ),
+            _SettingsItem(
+              icon: Icons.notifications_outlined,
+              title: 'Bildirim Ayarları',
               onTap: () {
                 Navigator.pop(context);
                 Navigator.of(context).push(
@@ -187,26 +302,72 @@ class ProfileScreen extends ConsumerWidget {
                 );
               },
             ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.logout, color: AppTheme.errorColor),
-              title: const Text(
-                'Çıkış Yap',
-                style: TextStyle(color: AppTheme.errorColor),
+            _SettingsItem(
+              icon: Icons.dark_mode_outlined,
+              title: 'Tema Seçimi',
+              trailing: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  'Koyu',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.primaryColor,
+                  ),
+                ),
               ),
+              onTap: () {},
+            ),
+            _SettingsItem(
+              icon: Icons.language_outlined,
+              title: 'Dil Seçimi',
+              trailing: Text(
+                'Türkçe',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppTheme.textTertiary,
+                ),
+              ),
+              onTap: () {},
+            ),
+            const SizedBox(height: 8),
+            Divider(
+              color: AppTheme.primaryColor.withValues(alpha: 0.1),
+            ),
+            const SizedBox(height: 8),
+            _SettingsItem(
+              icon: Icons.logout_rounded,
+              title: 'Çıkış Yap',
+              iconColor: AppTheme.errorColor,
+              titleColor: AppTheme.errorColor,
               onTap: () async {
                 Navigator.pop(context);
                 final confirmed = await showDialog<bool>(
                   context: context,
                   builder: (context) => AlertDialog(
-                    title: const Text('Çıkış Yap'),
-                    content: const Text(
+                    backgroundColor: context.appSurface,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    title: Text(
+                      'Çıkış Yap',
+                      style: TextStyle(color: context.appTextPrimary),
+                    ),
+                    content: Text(
                       'Hesabınızdan çıkış yapmak istediğinize emin misiniz?',
+                      style: TextStyle(color: AppTheme.textSecondary),
                     ),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.pop(context, false),
-                        child: const Text('İptal'),
+                        child: Text(
+                          'İptal',
+                          style: TextStyle(color: AppTheme.textTertiary),
+                        ),
                       ),
                       TextButton(
                         onPressed: () => Navigator.pop(context, true),
@@ -225,8 +386,168 @@ class ProfileScreen extends ConsumerWidget {
               },
             ),
             const SizedBox(height: 16),
+            Text(
+              'LezzetPot v1.0.0',
+              style: TextStyle(
+                fontSize: 11,
+                color: AppTheme.textTertiary.withValues(alpha: 0.5),
+              ),
+            ),
+            const SizedBox(height: 20),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _SettingsItem extends StatelessWidget {
+  const _SettingsItem({
+    required this.icon,
+    required this.title,
+    required this.onTap,
+    this.trailing,
+    this.iconColor,
+    this.titleColor,
+  });
+
+  final IconData icon;
+  final String title;
+  final VoidCallback onTap;
+  final Widget? trailing;
+  final Color? iconColor;
+  final Color? titleColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Icon(
+        icon,
+        color: iconColor ?? AppTheme.textSecondary,
+        size: 22,
+      ),
+      title: Text(
+        title,
+        style: TextStyle(
+          color: titleColor ?? context.appTextPrimary,
+          fontSize: 15,
+        ),
+      ),
+      trailing: trailing ?? Icon(
+        Icons.chevron_right,
+        color: AppTheme.textTertiary.withValues(alpha: 0.5),
+        size: 20,
+      ),
+      onTap: onTap,
+    );
+  }
+}
+
+class _BadgeItem extends StatelessWidget {
+  const _BadgeItem({
+    required this.emoji,
+    required this.label,
+    required this.gradientColors,
+    required this.borderColor,
+  });
+
+  final String emoji;
+  final String label;
+  final List<Color> gradientColors;
+  final Color borderColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: gradientColors,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderColor),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(emoji, style: const TextStyle(fontSize: 24)),
+          const SizedBox(height: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: AppTheme.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BadgeItemNew extends StatelessWidget {
+  const _BadgeItemNew({
+    required this.icon,
+    required this.label,
+    required this.backgroundColor,
+    required this.iconBackgroundColor,
+    required this.iconColor,
+    this.isHighlighted = false,
+    this.labelColor,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color backgroundColor;
+  final Color iconBackgroundColor;
+  final Color iconColor;
+  final bool isHighlighted;
+  final Color? labelColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 70,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isHighlighted 
+              ? Colors.transparent 
+              : AppTheme.primaryColor.withValues(alpha: 0.1),
+        ),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: iconBackgroundColor,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              icon,
+              size: 22,
+              color: iconColor,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: labelColor ??
+                  (isHighlighted ? Colors.white : context.appTextPrimary),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -235,59 +556,105 @@ class ProfileScreen extends ConsumerWidget {
 class _ProfileHeader extends StatelessWidget {
   const _ProfileHeader({
     required this.name,
-    required this.subtitle,
+    required this.handle,
+    required this.bio,
     this.avatarUrl,
   });
 
   final String name;
-  final String subtitle;
+  final String handle;
+  final String bio;
   final String? avatarUrl;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return Row(
       children: [
-        Container(
-          width: 84,
-          height: 84,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: AppTheme.dividerColor, width: 1.5),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(2),
-            child: CircleAvatar(
-              radius: 40,
-              backgroundColor: AppTheme.chipColor,
-              backgroundImage: avatarUrl != null
-                  ? NetworkImage(avatarUrl!)
-                  : null,
+        Stack(
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: AppTheme.primaryColor.withValues(alpha: 0.3),
+                  width: 2,
+                ),
+                image: avatarUrl != null
+                    ? DecorationImage(
+                        image: NetworkImage(avatarUrl!),
+                        fit: BoxFit.cover,
+                      )
+                    : null,
+                color: avatarUrl == null ? AppTheme.inputColor : null,
+              ),
               child: avatarUrl == null
-                  ? Text(
-                      name.isNotEmpty ? name[0].toUpperCase() : 'U',
-                      style: const TextStyle(
-                        fontSize: 30,
-                        fontWeight: FontWeight.w700,
-                        color: AppTheme.primaryColor,
+                  ? Center(
+                      child: Text(
+                        name.isNotEmpty ? name[0].toUpperCase() : 'U',
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.primaryColor,
+                        ),
                       ),
                     )
                   : null,
             ),
-          ),
+            Positioned(
+              bottom: -2,
+              right: -2,
+              child: Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: AppTheme.greenOnline,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: context.appSurface,
+                    width: 3,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 16),
-        Text(
-          name,
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w800,
-            color: AppTheme.textPrimary,
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                name,
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: context.appTextPrimary,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                handle,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: AppTheme.primaryColor.withValues(alpha: 0.7),
+                ),
+              ),
+              if (bio.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  bio,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.textSecondary.withValues(alpha: 0.5),
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ],
           ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          subtitle,
-          style: const TextStyle(fontSize: 14, color: AppTheme.textSecondary),
         ),
       ],
     );
@@ -306,22 +673,26 @@ class _ProfileStatsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final followersCount = profileAsync.valueOrNull?.followersCount ?? 0;
+    final followingCount = 0;
 
     return userPostsAsync.when(
       data: (posts) => _StatsRow(
         postsCount: posts.length,
         likesCount: posts.fold<int>(0, (sum, post) => sum + post.likesCount),
         followersCount: followersCount,
+        followingCount: followingCount,
       ),
       loading: () => _StatsRow(
         postsCount: profileAsync.valueOrNull?.postsCount ?? 0,
         likesCount: 0,
         followersCount: followersCount,
+        followingCount: followingCount,
       ),
       error: (error, stackTrace) => _StatsRow(
         postsCount: profileAsync.valueOrNull?.postsCount ?? 0,
         likesCount: 0,
         followersCount: followersCount,
+        followingCount: followingCount,
       ),
     );
   }
@@ -332,60 +703,104 @@ class _StatsRow extends StatelessWidget {
     required this.postsCount,
     required this.likesCount,
     required this.followersCount,
+    required this.followingCount,
   });
 
   final int postsCount;
   final int likesCount;
   final int followersCount;
+  final int followingCount;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppTheme.dividerColor),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          _StatItem(value: '$postsCount', label: 'Tarif'),
-          Container(width: 1, height: 36, color: AppTheme.dividerColor),
-          _StatItem(value: '$likesCount', label: 'Beğeni'),
-          Container(width: 1, height: 36, color: AppTheme.dividerColor),
-          _StatItem(value: '$followersCount', label: 'Takipçi'),
-        ],
-      ),
+    return Row(
+      children: [
+        Expanded(
+          child: _StatItem(
+            value: postsCount,
+            label: 'Tarif',
+            icon: Icons.restaurant_outlined,
+          ),
+        ),
+        Expanded(
+          child: _StatItem(
+            value: likesCount,
+            label: 'Beğeni',
+            icon: Icons.favorite_outline,
+          ),
+        ),
+        Expanded(
+          child: _StatItem(
+            value: followersCount,
+            label: 'Takipçi',
+            icon: Icons.people_outline,
+          ),
+        ),
+        Expanded(
+          child: _StatItem(
+            value: followingCount,
+            label: 'Takip',
+            icon: Icons.person_add_outlined,
+          ),
+        ),
+      ],
     );
   }
 }
 
 class _StatItem extends StatelessWidget {
-  const _StatItem({required this.value, required this.label});
+  const _StatItem({
+    required this.value,
+    required this.label,
+    required this.icon,
+  });
 
-  final String value;
+  final int value;
   final String label;
+  final IconData icon;
+
+  String _formatValue(int value) {
+    if (value >= 1000) {
+      return '${(value / 1000).toStringAsFixed(1)}k';
+    }
+    return value.toString();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w800,
-            color: AppTheme.textPrimary,
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      decoration: BoxDecoration(
+        color: context.appCardFill,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      child: Column(
+        children: [
+          Icon(
+            icon,
+            size: 14,
+            color: context.appIconColor.withValues(alpha: 0.6),
           ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
-          textAlign: TextAlign.center,
-        ),
-      ],
+          const SizedBox(height: 6),
+          Text(
+            _formatValue(value),
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: context.appTextPrimary,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              color: AppTheme.textSecondary.withValues(alpha: 0.5),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -411,17 +826,17 @@ class _UserPostsList extends ConsumerWidget {
                     width: 80,
                     height: 80,
                     decoration: BoxDecoration(
-                      color: AppTheme.chipColor,
+                      color: AppTheme.inputColor,
                       borderRadius: BorderRadius.circular(40),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.camera_alt_outlined,
                       size: 40,
-                      color: AppTheme.textTertiary,
+                      color: AppTheme.textTertiary.withValues(alpha: 0.5),
                     ),
                   ),
                   const SizedBox(height: 16),
-                  const Text(
+                  Text(
                     'Henüz paylaşım yok',
                     style: TextStyle(
                       fontSize: 16,
@@ -429,16 +844,12 @@ class _UserPostsList extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const CreatePostScreen(),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.add),
-                    label: const Text('İlk Paylaşımını Yap'),
+                  Text(
+                    'İlk tarifini paylaşarak başla!',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppTheme.textTertiary.withValues(alpha: 0.5),
+                    ),
                   ),
                 ],
               ),
@@ -447,7 +858,7 @@ class _UserPostsList extends ConsumerWidget {
         }
 
         return SliverPadding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 120),
           sliver: SliverGrid(
             delegate: SliverChildBuilderDelegate((context, index) {
               final post = posts[index];
@@ -458,19 +869,23 @@ class _UserPostsList extends ConsumerWidget {
                 },
               );
             }, childCount: posts.length),
-            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-              maxCrossAxisExtent: 260,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
               mainAxisSpacing: 12,
               crossAxisSpacing: 12,
-              childAspectRatio: 0.88,
+              childAspectRatio: 0.85,
             ),
           ),
         );
       },
-      loading: () => const SliverToBoxAdapter(
+      loading: () => SliverToBoxAdapter(
         child: Padding(
-          padding: EdgeInsets.all(40),
-          child: Center(child: CircularProgressIndicator()),
+          padding: const EdgeInsets.all(40),
+          child: Center(
+            child: CircularProgressIndicator(
+              color: AppTheme.primaryColor,
+            ),
+          ),
         ),
       ),
       error: (error, stack) => SliverToBoxAdapter(
@@ -478,13 +893,16 @@ class _UserPostsList extends ConsumerWidget {
           padding: const EdgeInsets.all(40),
           child: Column(
             children: [
-              const Icon(
+              Icon(
                 Icons.error_outline,
                 size: 48,
-                color: AppTheme.textTertiary,
+                color: AppTheme.textTertiary.withValues(alpha: 0.5),
               ),
               const SizedBox(height: 16),
-              Text('Hata: $error'),
+              Text(
+                'Bir hata oluştu',
+                style: TextStyle(color: AppTheme.textSecondary),
+              ),
             ],
           ),
         ),
@@ -503,12 +921,14 @@ class _ProfilePostTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppTheme.dividerColor),
+        color: context.appSurface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: AppTheme.primaryColor.withValues(alpha: 0.1),
+        ),
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
         child: Stack(
           fit: StackFit.expand,
           children: [
@@ -516,22 +936,22 @@ class _ProfilePostTile extends StatelessWidget {
               post.imageUrl,
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) => Container(
-                color: AppTheme.cardColor,
-                child: const Icon(
+                color: AppTheme.inputColor,
+                child: Icon(
                   Icons.restaurant,
                   size: 34,
-                  color: AppTheme.textTertiary,
+                  color: AppTheme.primaryColor.withValues(alpha: 0.3),
                 ),
               ),
             ),
-            DecoratedBox(
+            Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
                     Colors.transparent,
-                    Colors.black.withValues(alpha: 0.72),
+                    AppTheme.deepNavy.withValues(alpha: 0.9),
                   ],
                 ),
               ),
@@ -541,10 +961,18 @@ class _ProfilePostTile extends StatelessWidget {
               right: 10,
               child: GestureDetector(
                 onTap: onLike,
-                child: Icon(
-                  post.isLiked ? Icons.favorite : Icons.favorite_border,
-                  color: Colors.white,
-                  size: 18,
+                child: Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    post.isLiked ? Icons.favorite : Icons.favorite_border,
+                    color: post.isLiked ? Colors.red : Colors.white,
+                    size: 16,
+                  ),
                 ),
               ),
             ),
@@ -562,36 +990,36 @@ class _ProfilePostTile extends StatelessWidget {
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 13,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 8),
                   Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.favorite,
-                        color: AppTheme.accentColor,
+                        color: Colors.red.withValues(alpha: 0.7),
                         size: 14,
                       ),
                       const SizedBox(width: 4),
                       Text(
                         '${post.likesCount}',
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.88),
+                          color: AppTheme.textSecondary.withValues(alpha: 0.8),
                           fontSize: 11,
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      const Icon(
+                      const SizedBox(width: 12),
+                      Icon(
                         Icons.chat_bubble_outline,
-                        color: Colors.white,
+                        color: context.appSectionLabel,
                         size: 14,
                       ),
                       const SizedBox(width: 4),
                       Text(
                         '${post.commentsCount}',
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.88),
+                          color: AppTheme.textSecondary.withValues(alpha: 0.8),
                           fontSize: 11,
                         ),
                       ),
@@ -613,50 +1041,69 @@ class _DemoProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
+      backgroundColor: context.appBackground,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Text(
-                    'Tarif Defterim',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 22),
-              const _ProfileHeader(name: 'safcaf', subtitle: '4 Paylaşım'),
-              const SizedBox(height: 22),
-              const _StatsRow(postsCount: 0, likesCount: 0, followersCount: 0),
-              const SizedBox(height: 22),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {},
-                  child: const Text('Tarif Yükle'),
+              Text(
+                'Profilim',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: context.appTextPrimary,
                 ),
               ),
               const SizedBox(height: 20),
               Container(
-                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: context.appSurface,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                  ),
+                ),
+                child: const Column(
+                  children: [
+                    _ProfileHeader(
+                      name: 'Demo Kullanıcı',
+                      handle: '@demo',
+                      bio: 'Demo modunda geziniyorsun 🍳',
+                    ),
+                    SizedBox(height: 20),
+                    _StatsRow(
+                      postsCount: 4,
+                      likesCount: 128,
+                      followersCount: 56,
+                      followingCount: 23,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: AppTheme.dividerColor),
+                  color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: AppTheme.primaryColor.withValues(alpha: 0.2),
+                  ),
                 ),
-                child: const Row(
+                child: Row(
                   children: [
-                    Icon(Icons.info_outline, color: AppTheme.primaryColor),
-                    SizedBox(width: 12),
+                    Icon(
+                      Icons.info_outline,
+                      color: AppTheme.primaryColor,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        'Demo modunda profil ayarlari ve paylasim esitleme ozellikleri sinirlidir.',
+                        'Demo modunda profil ve paylaşım özellikleri sınırlıdır.',
                         style: TextStyle(
                           fontSize: 13,
                           color: AppTheme.textSecondary,
@@ -666,77 +1113,9 @@ class _DemoProfileScreen extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 18),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Paylaşımlarım',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              GridView.count(
-                crossAxisCount: 2,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                childAspectRatio: 0.88,
-                children: const [
-                  _DemoProfileTile(title: 'Vanilyali Pasta'),
-                  _DemoProfileTile(title: 'Baharatli Balik'),
-                  _DemoProfileTile(title: 'Kase Tarif'),
-                  _DemoProfileTile(title: 'Citir Borek'),
-                ],
-              ),
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _DemoProfileTile extends StatelessWidget {
-  const _DemoProfileTile({required this.title});
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppTheme.cardColor,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppTheme.dividerColor),
-      ),
-      child: Stack(
-        children: [
-          Center(
-            child: Icon(
-              Icons.restaurant,
-              size: 34,
-              color: AppTheme.primaryColor.withValues(alpha: 0.3),
-            ),
-          ),
-          Positioned(
-            left: 12,
-            right: 12,
-            bottom: 12,
-            child: Text(
-              title,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: AppTheme.textPrimary,
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

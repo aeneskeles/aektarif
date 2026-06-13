@@ -4,14 +4,21 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../models/recipe.dart';
 import '../../theme/app_theme.dart';
+import '../../theme/theme_extensions.dart';
 import '../../data/ingredients_repository.dart';
 import '../../data/recipes_repository.dart';
 import '../../data/favorites_repository.dart';
+import '../../data/zero_waste_service.dart';
 
 class RecipeDetailScreen extends ConsumerWidget {
-  const RecipeDetailScreen({super.key, required this.recipeId});
+  const RecipeDetailScreen({
+    super.key,
+    required this.recipeId,
+    this.hideBottomBar = false,
+  });
 
   final String recipeId;
+  final bool hideBottomBar;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -25,7 +32,7 @@ class RecipeDetailScreen extends ConsumerWidget {
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Scaffold(
-            backgroundColor: AppTheme.backgroundColor,
+            backgroundColor: context.appBackground,
             body: Center(
               child: CircularProgressIndicator(color: AppTheme.primaryColor),
             ),
@@ -35,8 +42,8 @@ class RecipeDetailScreen extends ConsumerWidget {
         final recipe = snapshot.data;
         if (recipe == null) {
           return Scaffold(
-            backgroundColor: AppTheme.backgroundColor,
-            appBar: AppBar(backgroundColor: AppTheme.backgroundColor),
+            backgroundColor: context.appBackground,
+            appBar: AppBar(backgroundColor: context.appBackground),
             body: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -51,7 +58,7 @@ class RecipeDetailScreen extends ConsumerWidget {
         }
 
         return Scaffold(
-          backgroundColor: AppTheme.backgroundColor,
+          backgroundColor: context.appBackground,
           body: CustomScrollView(
             slivers: [
               // Hero Image
@@ -118,31 +125,22 @@ class RecipeDetailScreen extends ConsumerWidget {
                             icon: Icons.arrow_back,
                             onTap: () => Navigator.of(context).pop(),
                           ),
-                          Row(
-                            children: [
-                              _FavoriteButton(
-                                isFavorite: isFavorite,
-                                onTap: () {
-                                  ref.read(favoritesProvider.notifier).toggle(recipeId);
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        isFavorite 
-                                            ? 'Favorilerden çıkarıldı' 
-                                            : 'Favorilere eklendi'
-                                      ),
-                                      behavior: SnackBarBehavior.floating,
-                                      duration: const Duration(seconds: 1),
-                                    ),
-                                  );
-                                },
-                              ),
-                              const SizedBox(width: 8),
-                              _CircleButton(
-                                icon: Icons.share_outlined,
-                                onTap: () {},
-                              ),
-                            ],
+                          _FavoriteButton(
+                            isFavorite: isFavorite,
+                            onTap: () {
+                              ref.read(favoritesProvider.notifier).toggle(recipeId);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    isFavorite 
+                                        ? 'Favorilerden çıkarıldı' 
+                                        : 'Favorilere eklendi'
+                                  ),
+                                  behavior: SnackBarBehavior.floating,
+                                  duration: const Duration(seconds: 1),
+                                ),
+                              );
+                            },
                           ),
                         ],
                       ),
@@ -157,7 +155,7 @@ class RecipeDetailScreen extends ConsumerWidget {
                   offset: const Offset(0, -24),
                   child: Container(
                     decoration: BoxDecoration(
-                      color: AppTheme.backgroundColor,
+                      color: context.appBackground,
                       borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
                     ),
                     child: Padding(
@@ -189,7 +187,7 @@ class RecipeDetailScreen extends ConsumerWidget {
                             recipe.name,
                             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                                   fontWeight: FontWeight.w800,
-                                  color: AppTheme.textPrimary,
+                                  color: context.appTextPrimary,
                                 ),
                           ),
 
@@ -272,7 +270,12 @@ class RecipeDetailScreen extends ConsumerWidget {
                             }),
                           ],
 
-                          const SizedBox(height: 100),
+                          const SizedBox(height: 28),
+
+                          // Zero Waste Section
+                          _ZeroWasteCard(recipe: recipe),
+
+                          SizedBox(height: hideBottomBar ? 40 : 100),
                         ],
                       ),
                     ),
@@ -281,10 +284,10 @@ class RecipeDetailScreen extends ConsumerWidget {
               ),
             ],
           ),
-          bottomNavigationBar: Container(
+          bottomNavigationBar: hideBottomBar ? null : Container(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: context.appSurface,
               borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
               boxShadow: [
                 BoxShadow(
@@ -379,7 +382,7 @@ class _CircleButton extends StatelessWidget {
         ),
         child: Icon(
           icon,
-          color: AppTheme.textPrimary,
+          color: context.appTextPrimary,
           size: 20,
         ),
       ),
@@ -409,7 +412,7 @@ class _FavoriteButton extends StatelessWidget {
         ),
         child: Icon(
           isFavorite ? Icons.favorite : Icons.favorite_border,
-          color: isFavorite ? Colors.red : AppTheme.textPrimary,
+          color: isFavorite ? Colors.red : context.appTextPrimary,
           size: 20,
         ),
       ),
@@ -477,7 +480,7 @@ class _SectionTitle extends StatelessWidget {
           title,
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.w700,
-                color: AppTheme.textPrimary,
+                color: context.appTextPrimary,
               ),
         ),
         if (subtitle != null) ...[
@@ -559,7 +562,7 @@ class _IngredientsList extends StatelessWidget {
                     ingredient,
                     style: TextStyle(
                       fontSize: 14,
-                      color: hasIt ? AppTheme.successColor : AppTheme.textPrimary,
+                      color: hasIt ? AppTheme.successColor : context.appTextPrimary,
                       fontWeight: hasIt ? FontWeight.w600 : FontWeight.w400,
                       height: 1.4,
                       decoration: hasIt ? TextDecoration.none : null,
@@ -639,7 +642,7 @@ class _StepItem extends StatelessWidget {
                     instruction,
                     style: TextStyle(
                       fontSize: 14,
-                      color: AppTheme.textPrimary,
+                      color: context.appTextPrimary,
                       height: 1.5,
                     ),
                   ),
@@ -670,5 +673,347 @@ class _StepItem extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class _ZeroWasteCard extends ConsumerStatefulWidget {
+  const _ZeroWasteCard({required this.recipe});
+
+  final Recipe recipe;
+
+  @override
+  ConsumerState<_ZeroWasteCard> createState() => _ZeroWasteCardState();
+}
+
+class _ZeroWasteCardState extends ConsumerState<_ZeroWasteCard> {
+  bool _isExpanded = false;
+  ZeroWasteAnalysis? _analysis;
+
+  // Modern blue color palette matching Figma design
+  static const Color _primaryBlue = AppTheme.primaryColor;
+  static const Color _darkBlue = Color(0xFF1E40AF);
+  static const Color _textBlue = Color(0xFF1D4ED8);
+
+  @override
+  void initState() {
+    super.initState();
+    _analyzeRecipe();
+  }
+
+  void _analyzeRecipe() {
+    final service = ref.read(zeroWasteServiceProvider);
+    _analysis = service.analyzeRecipe(widget.recipe);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final analysis = _analysis;
+    
+    if (analysis == null || !analysis.isZeroWastePossible) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: context.appSurface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.dividerColor),
+      ),
+      child: Column(
+        children: [
+          // Header
+          InkWell(
+            onTap: () => setState(() => _isExpanded = !_isExpanded),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.eco_outlined,
+                    color: context.appIconColor,
+                    size: 22,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              'Sıfır Atık Önerileri',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: context.appTextPrimary,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _primaryBlue,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Text(
+                                'Premium',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${analysis.identifiedWaste.length} atık tespit edildi',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: _primaryBlue,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  AnimatedRotation(
+                    turns: _isExpanded ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 200),
+                    child: Icon(
+                      Icons.keyboard_arrow_down,
+                      color: AppTheme.textTertiary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Expandable Content
+          AnimatedCrossFade(
+            firstChild: const SizedBox.shrink(),
+            secondChild: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Divider(height: 1),
+                
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Identified Waste Section
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.search,
+                            size: 16,
+                            color: AppTheme.textSecondary,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Tespit Edilen Atıklar',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      
+                      // Waste Tags
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: analysis.identifiedWaste.map((waste) {
+                          return Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _primaryBlue,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              waste,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white,
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // Suggestions
+                      ...analysis.premiumSuggestions.asMap().entries.map((entry) {
+                        final suggestion = entry.value;
+                        final iconData = _getSuggestionIcon(entry.key);
+                        final iconColor = _getSuggestionColor(entry.key);
+                        
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 16),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: AppTheme.cardColor,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    width: 36,
+                                    height: 36,
+                                    decoration: BoxDecoration(
+                                      color: iconColor.withOpacity(0.15),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Icon(
+                                      iconData,
+                                      color: iconColor,
+                                      size: 20,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      suggestion.title,
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w700,
+                                        color: context.appTextPrimary,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 14),
+                              ...suggestion.steps.asMap().entries.map((stepEntry) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Container(
+                                        width: 22,
+                                        height: 22,
+                                        decoration: BoxDecoration(
+                                          color: _primaryBlue,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            '${stepEntry.key + 1}',
+                                            style: const TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w700,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          stepEntry.value,
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            color: AppTheme.textSecondary,
+                                            height: 1.5,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }),
+                            ],
+                          ),
+                        );
+                      }),
+
+                      // Green Impact
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: context.appSurface,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppTheme.dividerColor),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                color: context.appSurface,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Center(
+                                child: Text(
+                                  '🌍',
+                                  style: TextStyle(fontSize: 18),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                analysis.greenImpact,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  color: _darkBlue,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            crossFadeState: _isExpanded 
+                ? CrossFadeState.showSecond 
+                : CrossFadeState.showFirst,
+            duration: const Duration(milliseconds: 300),
+          ),
+        ],
+      ),
+    );
+  }
+
+  IconData _getSuggestionIcon(int index) {
+    final icons = [
+      Icons.restaurant_outlined,
+      Icons.local_florist_outlined,
+      Icons.eco_outlined,
+    ];
+    return icons[index % icons.length];
+  }
+
+  Color _getSuggestionColor(int index) {
+    final colors = [
+      const Color(0xFFF59E0B), // Amber
+      const Color(0xFF10B981), // Green
+      AppTheme.primaryColor, // Blue
+    ];
+    return colors[index % colors.length];
   }
 }

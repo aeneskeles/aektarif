@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../config/supabase_config.dart';
+import '../../l10n/app_strings.dart';
 import '../../theme/app_theme.dart';
+import '../../theme/theme_extensions.dart';
 import '../../data/feed_repository.dart';
 import '../../models/post.dart';
 import '../post/create_post_screen.dart';
+import 'post_detail_screen.dart';
 
 class PostsScreen extends ConsumerWidget {
   const PostsScreen({super.key});
@@ -13,160 +16,127 @@ class PostsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final feedState = ref.watch(feedNotifierProvider);
+    final strings = ref.watch(appStringsProvider);
 
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
-      body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            // App Bar
-            SliverToBoxAdapter(
+      backgroundColor: context.appBackground,
+      body: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: SafeArea(
+              bottom: false,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                child: Row(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Paylaşımlar',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
+                      strings.posts,
+                      style: TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w800,
+                        color: context.appTextPrimary,
                       ),
                     ),
-                    const Spacer(),
-                    TextButton.icon(
-                      onPressed: () {
-                        ref.invalidate(feedNotifierProvider);
-                      },
-                      icon: const Icon(Icons.refresh, size: 18),
-                      label: const Text('Yenile'),
+                    const SizedBox(height: 4),
+                    Text(
+                      strings.postsSubtitle,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: context.appTextMuted,
+                      ),
                     ),
                   ],
                 ),
               ),
             ),
-
-            // Subtitle
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                child: Text(
-                  'Topluluktan lezzetli paylaşımlar',
-                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
-                ),
-              ),
-            ),
-
-            // Content
-            if (!SupabaseConfig.isConfigured)
-              SliverFillRemaining(child: _buildOfflineState(context))
-            else
-              feedState.when(
-                data: (posts) {
-                  if (posts.isEmpty) {
-                    return SliverFillRemaining(
-                      child: _buildEmptyState(context),
-                    );
-                  }
-
-                  return SliverPadding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    sliver: SliverGrid(
-                      delegate: SliverChildBuilderDelegate((context, index) {
-                        final post = posts[index];
-                        return _PostGridTile(
-                          post: post,
-                          onLike: () {
-                            ref
-                                .read(feedNotifierProvider.notifier)
-                                .toggleLike(post.id);
-                          },
-                        );
-                      }, childCount: posts.length),
-                      gridDelegate:
-                          const SliverGridDelegateWithMaxCrossAxisExtent(
-                            maxCrossAxisExtent: 280,
-                            crossAxisSpacing: 12,
-                            mainAxisSpacing: 12,
-                            childAspectRatio: 0.84,
-                          ),
-                    ),
-                  );
-                },
-                loading: () => const SliverFillRemaining(
-                  child: Center(child: CircularProgressIndicator()),
-                ),
-                error: (error, stack) =>
-                    SliverFillRemaining(child: _buildErrorState(context, ref)),
-              ),
-
-            // Bottom padding
-            const SliverToBoxAdapter(child: SizedBox(height: 100)),
-          ],
-        ),
-      ),
-      floatingActionButton: SupabaseConfig.isConfigured
-          ? FloatingActionButton(
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const CreatePostScreen()),
-                );
-              },
-              backgroundColor: AppTheme.primaryColor,
-              child: const Icon(Icons.add, color: Colors.white),
+          ),
+          const SliverToBoxAdapter(child: SizedBox(height: 20)),
+          if (!SupabaseConfig.isConfigured)
+            SliverFillRemaining(
+              child: _PostsEmptyState(strings: strings),
             )
-          : null,
-    );
-  }
+          else
+            feedState.when(
+              data: (posts) {
+                if (posts.isEmpty) {
+                  return SliverFillRemaining(
+                    child: _PostsEmptyState(strings: strings),
+                  );
+                }
 
-  Widget _buildEmptyState(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                color: AppTheme.chipColor,
-                borderRadius: BorderRadius.circular(50),
-              ),
-              child: const Icon(
-                Icons.photo_library_outlined,
-                size: 50,
-                color: AppTheme.textTertiary,
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Henüz paylaşım yok',
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'İlk paylaşımı sen yaparak topluluğu başlat!',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: AppTheme.textSecondary),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const CreatePostScreen()),
+                return SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final post = posts[index];
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 20),
+                          child: _PostCard(
+                            post: post,
+                            strings: strings,
+                            onLike: () {
+                              ref
+                                  .read(feedNotifierProvider.notifier)
+                                  .toggleLike(post.id);
+                            },
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => PostDetailScreen(post: post),
+                                ),
+                              );
+                            },
+                          ),
+                        );
+                      },
+                      childCount: posts.length,
+                    ),
+                  ),
                 );
               },
-              icon: const Icon(Icons.add_a_photo),
-              label: const Text('Paylaşım Yap'),
+              loading: () => SliverFillRemaining(
+                child: Center(
+                  child: CircularProgressIndicator(
+                    color: AppTheme.primaryColor,
+                  ),
+                ),
+              ),
+              error: (error, stack) => SliverFillRemaining(
+                child: _PostsEmptyState(strings: strings),
+              ),
             ),
-          ],
+          const SliverToBoxAdapter(child: SizedBox(height: 120)),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          if (SupabaseConfig.isConfigured) {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const CreatePostScreen()),
+            );
+          }
+        },
+        backgroundColor: AppTheme.primaryColor,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.add, size: 20),
+        label: Text(
+          strings.share,
+          style: const TextStyle(fontWeight: FontWeight.w600),
         ),
       ),
     );
   }
+}
 
-  Widget _buildOfflineState(BuildContext context) {
+class _PostsEmptyState extends StatelessWidget {
+  const _PostsEmptyState({required this.strings});
+
+  final AppStrings strings;
+
+  @override
+  Widget build(BuildContext context) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -174,54 +144,35 @@ class PostsScreen extends ConsumerWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 100,
-              height: 100,
+              width: 72,
+              height: 72,
               decoration: BoxDecoration(
-                color: AppTheme.chipColor,
-                borderRadius: BorderRadius.circular(50),
+                color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(36),
               ),
-              child: const Icon(
-                Icons.cloud_off,
-                size: 50,
-                color: AppTheme.textTertiary,
+              child: Icon(
+                Icons.people_outline_rounded,
+                size: 36,
+                color: AppTheme.primaryColor.withValues(alpha: 0.6),
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
             Text(
-              'Çevrimdışı Mod',
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+              strings.noPostsYet,
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 18,
+                color: context.appTextPrimary,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
-              'Paylaşımları görmek için internet bağlantısı gerekli',
+              strings.beFirstToPost,
               textAlign: TextAlign.center,
-              style: TextStyle(color: AppTheme.textSecondary),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildErrorState(BuildContext context, WidgetRef ref) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.error_outline, size: 48, color: AppTheme.textTertiary),
-            const SizedBox(height: 16),
-            Text(
-              'Yüklenirken hata oluştu',
-              style: TextStyle(color: AppTheme.textSecondary),
-            ),
-            const SizedBox(height: 8),
-            TextButton(
-              onPressed: () => ref.invalidate(feedNotifierProvider),
-              child: const Text('Tekrar Dene'),
+              style: TextStyle(
+                color: context.appTextMuted,
+                fontSize: 14,
+              ),
             ),
           ],
         ),
@@ -230,122 +181,224 @@ class PostsScreen extends ConsumerWidget {
   }
 }
 
-class _PostGridTile extends StatelessWidget {
-  const _PostGridTile({required this.post, required this.onLike});
+class _PostCard extends StatelessWidget {
+  const _PostCard({
+    required this.post,
+    required this.strings,
+    required this.onLike,
+    required this.onTap,
+  });
 
   final Post post;
+  final AppStrings strings;
   final VoidCallback onLike;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppTheme.dividerColor),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(18),
-        child: Stack(
-          fit: StackFit.expand,
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: context.appSurface,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: AppTheme.primaryColor.withValues(alpha: 0.1),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Image.network(
-              post.imageUrl,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => Container(
-                color: AppTheme.cardColor,
-                child: const Icon(
-                  Icons.restaurant,
-                  color: AppTheme.textTertiary,
-                  size: 36,
-                ),
-              ),
-            ),
-            DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.black.withValues(alpha: 0.08),
-                    Colors.transparent,
-                    Colors.black.withValues(alpha: 0.75),
-                  ],
-                ),
-              ),
-            ),
-            Positioned(
-              top: 10,
-              right: 10,
-              child: GestureDetector(
-                onTap: onLike,
-                child: Container(
-                  width: 30,
-                  height: 30,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.92),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(
-                    post.isLiked ? Icons.favorite : Icons.favorite_border,
-                    color: post.isLiked
-                        ? AppTheme.accentColor
-                        : AppTheme.textSecondary,
-                    size: 18,
-                  ),
-                ),
-              ),
-            ),
-            Positioned(
-              left: 12,
-              right: 12,
-              bottom: 12,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
                 children: [
-                  Text(
-                    post.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: AppTheme.primaryColor.withValues(alpha: 0.3),
+                        width: 2,
+                      ),
+                      image: post.user?.avatarUrl != null
+                          ? DecorationImage(
+                              image: NetworkImage(post.user!.avatarUrl!),
+                              fit: BoxFit.cover,
+                            )
+                          : null,
+                      color: post.user?.avatarUrl == null
+                          ? context.appInput
+                          : null,
+                    ),
+                    child: post.user?.avatarUrl == null
+                        ? Icon(
+                            Icons.person_outline,
+                            color: AppTheme.primaryColor,
+                          )
+                        : null,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          post.user?.displayName ?? strings.anonymousUser,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: context.appTextPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '@${post.user?.username ?? 'anonymous'} · ${strings.formatTimeAgo(post.createdAt)}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: context.appTextMuted,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Row(
+                ],
+              ),
+            ),
+            if (post.recipeTitle != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(
-                        Icons.favorite,
-                        color: AppTheme.accentColor,
-                        size: 14,
+                      Icon(
+                        Icons.restaurant_rounded,
+                        size: 13,
+                        color: AppTheme.primaryColor,
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: 6),
                       Text(
-                        '${post.likesCount}',
+                        post.recipeTitle!,
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.88),
-                          fontSize: 11,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      const Icon(
-                        Icons.chat_bubble_outline,
-                        color: Colors.white,
-                        size: 14,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${post.commentsCount}',
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.88),
-                          fontSize: 11,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.primaryColor,
                         ),
                       ),
                     ],
                   ),
+                ),
+              ),
+            ClipRRect(
+              child: Image.network(
+                post.imageUrl,
+                height: 280,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  height: 280,
+                  color: context.appInput,
+                  child: Icon(
+                    Icons.restaurant,
+                    color: AppTheme.primaryColor.withValues(alpha: 0.3),
+                    size: 48,
+                  ),
+                ),
+              ),
+            ),
+            if (post.description != null && post.description!.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                child: Text(
+                  post.description!,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: context.appTextPrimary,
+                    height: 1.5,
+                  ),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+              child: Row(
+                children: [
+                  _ActionButton(
+                    icon: post.isLiked ? Icons.favorite : Icons.favorite_border,
+                    label: '${post.likesCount}',
+                    isActive: post.isLiked,
+                    activeColor: Colors.red,
+                    onTap: onLike,
+                  ),
+                  const SizedBox(width: 8),
+                  _ActionButton(
+                    icon: Icons.chat_bubble_outline_rounded,
+                    label: '${post.commentsCount}',
+                    onTap: onTap,
+                  ),
                 ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ActionButton extends StatelessWidget {
+  const _ActionButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.isActive = false,
+    this.activeColor,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool isActive;
+  final Color? activeColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isActive
+        ? activeColor ?? AppTheme.primaryColor
+        : context.appTextMuted;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isActive
+              ? (activeColor ?? AppTheme.primaryColor).withValues(alpha: 0.2)
+              : context.appOverlay,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: color),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: color,
               ),
             ),
           ],

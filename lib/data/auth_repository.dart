@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/supabase_config.dart';
@@ -57,6 +58,35 @@ class AuthRepository {
       email: email,
       password: password,
     );
+    return response;
+  }
+
+  Future<AuthResponse> signInWithGoogle() async {
+    const webClientId = '248653176763-o44s3d1qa8rl8db96su0e655e9r2fn99.apps.googleusercontent.com';
+
+    final googleSignIn = GoogleSignIn(
+      serverClientId: webClientId,
+    );
+
+    final googleUser = await googleSignIn.signIn();
+    if (googleUser == null) {
+      throw Exception('Google girişi iptal edildi');
+    }
+
+    final googleAuth = await googleUser.authentication;
+    final idToken = googleAuth.idToken;
+    final accessToken = googleAuth.accessToken;
+
+    if (idToken == null) {
+      throw Exception('Google kimlik doğrulaması başarısız');
+    }
+
+    final response = await _supabase.auth.signInWithIdToken(
+      provider: OAuthProvider.google,
+      idToken: idToken,
+      accessToken: accessToken,
+    );
+
     return response;
   }
 

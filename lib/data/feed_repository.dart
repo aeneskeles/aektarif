@@ -249,6 +249,83 @@ class FeedRepository {
       return true;
     }
   }
+
+  /// Get comments for a post
+  Future<List<PostComment>> getComments(String postId) async {
+    final data = await _supabase
+        .from('comments')
+        .select('''
+          id,
+          post_id,
+          user_id,
+          content,
+          created_at,
+          profiles!comments_user_id_fkey (
+            username,
+            display_name,
+            avatar_url
+          )
+        ''')
+        .eq('post_id', postId)
+        .order('created_at', ascending: true);
+
+    return (data as List).map((e) {
+      final map = e as Map<String, dynamic>;
+      final profile = map['profiles'] as Map<String, dynamic>?;
+      
+      return PostComment(
+        id: map['id'] as String,
+        postId: map['post_id'] as String,
+        userId: map['user_id'] as String,
+        content: map['content'] as String,
+        createdAt: DateTime.parse(map['created_at'] as String),
+        user: profile != null ? UserProfile(
+          id: map['user_id'] as String,
+          email: '',
+          username: profile['username'] as String?,
+          displayName: profile['display_name'] as String?,
+          avatarUrl: profile['avatar_url'] as String?,
+        ) : null,
+      );
+    }).toList();
+  }
+
+  /// Add a comment to a post
+  Future<PostComment> addComment(String postId, String content) async {
+    final user = _supabase.auth.currentUser;
+    if (user == null) throw Exception('Not authenticated');
+
+    final commentId = _uuid.v4();
+    final now = DateTime.now();
+
+    await _supabase.from('comments').insert({
+      'id': commentId,
+      'post_id': postId,
+      'user_id': user.id,
+      'content': content,
+      'created_at': now.toIso8601String(),
+    });
+
+    return PostComment(
+      id: commentId,
+      postId: postId,
+      userId: user.id,
+      content: content,
+      createdAt: now,
+    );
+  }
+
+  /// Delete a comment
+  Future<void> deleteComment(String commentId) async {
+    final user = _supabase.auth.currentUser;
+    if (user == null) throw Exception('Not authenticated');
+
+    await _supabase
+        .from('comments')
+        .delete()
+        .eq('id', commentId)
+        .eq('user_id', user.id);
+  }
 }
 
 /// Feed posts provider

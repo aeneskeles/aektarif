@@ -2,90 +2,108 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../theme/app_theme.dart';
-import '../../data/recipes_repository.dart';
+import '../../theme/theme_extensions.dart';
+import '../../data/favorites_repository.dart';
+import '../../models/recipe.dart';
+import '../recipes/recipe_detail_screen.dart';
 
 class FavoritesScreen extends ConsumerWidget {
   const FavoritesScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final recommendationsAsync = ref.watch(recipeRecommendationsProvider);
+    final favoritesAsync = ref.watch(favoriteRecipesProvider);
 
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
+      backgroundColor: context.appBackground,
       body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            // App Bar
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                child: Row(
-                  children: [
-                    Text(
-                      'Favorilerim',
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                            fontWeight: FontWeight.w800,
-                          ),
-                    ),
-                    const Spacer(),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Custom Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+              child: Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.of(context).pop(),
+                    child: Container(
+                      width: 40,
+                      height: 40,
                       decoration: BoxDecoration(
-                        color: AppTheme.chipColor,
-                        borderRadius: BorderRadius.circular(20),
+                        color: context.appCardFill,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: AppTheme.primaryColor.withValues(alpha: 0.15),
+                        ),
                       ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.favorite,
-                            size: 16,
-                            color: Colors.red,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            '0 tarif',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: AppTheme.textPrimary,
-                            ),
-                          ),
-                        ],
+                      child: Icon(
+                        Icons.arrow_back_ios_new_rounded,
+                        color: context.appIconColor,
+                        size: 18,
                       ),
                     ),
-                  ],
-                ),
-              ),
-            ),
-
-            // Subtitle
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
-                child: Text(
-                  'Beğendiğin tarifleri burada bulabilirsin',
-                  style: TextStyle(
-                    color: AppTheme.textSecondary,
-                    fontSize: 14,
                   ),
-                ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Favorilerim',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            color: context.appTextPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Beğendiğin tarifler',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: context.appSectionLabel,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
+            // Content
+            Expanded(
+              child: favoritesAsync.when(
+        data: (favorites) {
+          if (favorites.isEmpty) {
+            return _buildEmptyState(context);
+          }
 
-            // Favorites Grid or Empty State
-            recommendationsAsync.when(
-              data: (recommendations) {
-                // Şimdilik boş gösterelim - gerçek favoriler sistemi eklendiğinde güncellenecek
-                return SliverFillRemaining(
-                  child: _buildEmptyState(context),
-                );
-              },
-              loading: () => const SliverFillRemaining(
-                child: Center(child: CircularProgressIndicator()),
-              ),
-              error: (error, stackTrace) => SliverFillRemaining(
-                child: _buildEmptyState(context),
+          return ListView.builder(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
+            itemCount: favorites.length,
+            itemBuilder: (context, index) {
+              final recipe = favorites[index];
+              return _FavoriteTile(
+                recipe: recipe,
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => RecipeDetailScreen(recipeId: recipe.id),
+                    ),
+                  );
+                },
+                onRemove: () {
+                  ref.read(favoritesProvider.notifier).remove(recipe.id);
+                },
+              );
+            },
+          );
+        },
+                loading: () => const Center(
+                  child: CircularProgressIndicator(color: AppTheme.primaryColor),
+                ),
+                error: (_, __) => _buildEmptyState(context),
               ),
             ),
           ],
@@ -102,38 +120,118 @@ class FavoritesScreen extends ConsumerWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 100,
-              height: 100,
+              width: 80,
+              height: 80,
               decoration: BoxDecoration(
-                color: AppTheme.chipColor,
-                borderRadius: BorderRadius.circular(50),
+                color: Colors.red.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(40),
               ),
               child: const Icon(
                 Icons.favorite_outline,
-                size: 50,
-                color: AppTheme.textTertiary,
+                size: 40,
+                color: Colors.red,
               ),
             ),
             const SizedBox(height: 24),
             Text(
               'Henüz favori tarifin yok',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 18,
+                color: context.appTextPrimary,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
-              'Tarifleri keşfet ve beğendiklerini favorilere ekle',
+              'Tarifleri keşfet ve beğendiklerini ekle',
               textAlign: TextAlign.center,
-              style: TextStyle(color: AppTheme.textSecondary),
+              style: TextStyle(
+                color: context.appSectionLabel,
+              ),
             ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: () {
-                // Ana sayfaya yönlendir
-              },
-              icon: const Icon(Icons.explore),
-              label: const Text('Tarifleri Keşfet'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FavoriteTile extends StatelessWidget {
+  const _FavoriteTile({
+    required this.recipe,
+    required this.onTap,
+    required this.onRemove,
+  });
+
+  final Recipe recipe;
+  final VoidCallback onTap;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: context.appCardFill,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: AppTheme.primaryColor.withValues(alpha: 0.15),
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                color: AppTheme.inputColor,
+                image: recipe.imageUrl != null
+                    ? DecorationImage(
+                        image: NetworkImage(recipe.imageUrl!),
+                        fit: BoxFit.cover,
+                      )
+                    : null,
+              ),
+              child: recipe.imageUrl == null
+                  ? Icon(
+                      Icons.restaurant,
+                      color: AppTheme.primaryColor.withValues(alpha: 0.5),
+                    )
+                  : null,
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    recipe.name,
+                    style: TextStyle(
+                      color: context.appTextPrimary,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${recipe.totalTime} dk',
+                    style: TextStyle(
+                      color: context.appSectionLabel,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              onPressed: onRemove,
+              icon: const Icon(Icons.favorite, color: Colors.red, size: 22),
             ),
           ],
         ),
